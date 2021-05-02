@@ -1,15 +1,17 @@
-CFLAGS ?= -Wall -Wextra
+CXXFLAGS ?= -Wall -Wextra
 LDFLAGS ?=
 CXX ?= g++
 
-OBJECTS := main.o
-HEADERS :=
+OBJECTS := main.o region_reader.o nbt-impl.o chunk_loader.o palette.o
+HEADERS := region_reader.hpp nbt.hpp chunk_loader.hpp palette.hpp
 EXECUTABLE := main
 
-debug : CFLAGS += -Og -g -pg
+debug : CXXFLAGS += -Og -g
+release : CXXFLAGS += -O3
+debug : CFLAGS += -Og -g
 release : CFLAGS += -O3
 debug : LDFLAGS +=
-release : LDFLAGS += -O -s
+release : LDFLAGS += -O
 
 debug: $(EXECUTABLE)
 release: $(EXECUTABLE)
@@ -18,8 +20,11 @@ $(EXECUTABLE): $(OBJECTS) $(HEADERS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
 %.o: %.cpp $(HEADERS)
-	$(CXX) $(CFLAGS) $< -c
+	$(CXX) $(CXXFLAGS) $< -c
+
+nbt-impl.o: nbt-impl.c
+	$(CC) $(CFLAGS) $< -c
 
 .PHONY: clean
 clean:
-	$(RM) $(EXECUTABLE) $(OBJECTS)
+	$(RM) $(EXECUTABLE) *.o

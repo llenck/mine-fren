@@ -1,88 +1,128 @@
 #include <cstdio>
-#include <cstdint>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <memory>
 
-struct RegionReader {
-	int x, y;
-	int off = 0;
-	int fd;
+#include "region_reader.hpp"
+#include "chunk_loader.hpp"
+#include "palette.hpp"
 
-	const uint8_t* map;
-	size_t sz = 0;
+#include "nbt.hpp"
 
-	RegionReader(const char* filename) {
-		if (sscanf(filename, "r.%d.%d.mca", &x, &y) != 2)
-			return;
+// segment ^= 8x8 chunks
+// segx = chunkx / 8
+struct SegmentMinifier {
+	Chunk* chunks[16 * 16] = {};
 
-		if ((fd = open(filename, O_RDONLY | O_CLOEXEC)) < 0)
-			return;
+	// nx / px -> negative x, positive x
+	Chunk* adj_nx[8] = {};
+	Chunk* adj_nz[8] = {};
+	Chunk* adj_px[8] = {};
+	Chunk* adj_pz[8] = {};
 
-		struct stat file_info;
-		if (fstat(fd, &file_info) < 0)
-			goto err_clofd;
+	uint16_t* rows[16];
+	uint16_t* row_ny = nullptr, * row_py = nullptr;
+	int row_y = 0; // y of rows[0]
 
-		sz = file_info.st_size;
+	uint16_t& block_ref(int x, int y, int z) {
+		static uint16_t something_nonsolid = 0;
 
-		if ((map = (const uint8_t*)mmap(nullptr, sz, PROT_READ, MAP_PRIVATE, fd, 0))
-				== MAP_FAILED)
-			goto err_clofd;
+		int chunkx = x / 16;
+		int chunkz = z / 16;
+		Chunk* chunk = chunks[chunkx * 16 + chunkz];
+		if (!chunk)
+			return something_nonsolid;
 
-		return; // success
+		int chunk_local_x = x % 16;
+		int chunk_local_z = z % 16;
 
-err_clofd:
-		close(fd);
-		map = nullptr;
-		sz = 0;
+		off_t n = Chunk::xyz_to_index(chunk_local_x, y, chunk_local_z);
+		return chunk->blocks[n];
 	}
 
-	~RegionReader() {
-		if (sz != 0) {
-			munmap((void*)map, sz);
-			sz = 0;
-			close(fd);
+	uint16_t block_const(int x, int y, int z) {
+		static const uint16_t something_nonsolid = 0;
+
+		// if out of bounds, assume air
+		if (x < 0 || x >= 128
+		 || y < 0 || y >= 256
+		 || z < 0 || z >= 128)
+			return something_nonsolid;
+
+		// otherwise, do the usual dance
+		return block_ref(x, y, z);
+	}
+
+	SegmentMinifier(const RegionReader& r, int segx, int segz) {
+		segx %= 4;
+		segz %= 4;
+
+		int start_x = segx * 8;
+		int start_z = segz * 8;
+
+		bool any_present = false;
+
+		for (int x = start_x; x < start_x + 8; x++) {
+			for (int z = start_z; z < start_z + 8; z++) {
+				Chunk*& cur = chunks[x * 16 + z];
+				cur = new Chunk(r.get_chunk(x, z));
+
+				if (cur->err()) {
+					delete cur;
+					cur = nullptr;
+				}
+				else
+					any_present = true;
+			}
+		}
+
+		// return early if this segment is empty
+		if (!any_present)
+			return;
+
+		if (segx != 0) {
+			for (int z = 0; z < 8; z++)
+				adj_nx[z] = new Chunk(r.get_chunk(start_x - 1, z));
+		}
+		if (segx != 3) {
+			for (int z = 0; z < 8; z++)
+				adj_px[z] = new Chunk(r.get_chunk(start_x + 1, z));
+		}
+		if (segz != 0) {
+			for (int x = 0; x < 8; x++)
+				adj_nz[x] = new Chunk(r.get_chunk(x, start_z - 1));
+		}
+		if (segz != 3) {
+			for (int x = 0; x < 8; x++)
+				adj_pz[x] = new Chunk(r.get_chunk(x, start_z + 1));
+		}
+	}
+	SegmentMinifier(const SegmentMinifier& other) = delete;
+	SegmentMinifier(SegmentMinifier&& other) = delete;
+
+	~SegmentMinifier() {
+		for (int i = 0; i < 16 * 16; i++)
+			delete chunks[i];
+
+		Chunk** adjs[4] = { adj_nx, adj_nz, adj_px, adj_pz };
+		for (int i = 0; i < 4; i++) {
+			Chunk** adj = adjs[i];
+
+			for (int j = 0; j < 8; j++)
+				delete adj[j];
 		}
 	}
 
-	// mapping/fd -> "global-ish" state, destructors would interfere with copies
-	RegionReader(const RegionReader& other) = delete;
+	void minify() {
 
-	off_t chunk_off(int chunkx, int chunkz) {
-		chunkx %= 32;
-		chunkz %= 32;
-
-		int chunk_info_off = chunkx + chunkz * 16;
-
-		uint32_t* chunk_infos = (uint32_t*)map;
-		uint32_t chunk_info = chunk_infos[chunk_info_off];
-
-		// if both offset and sector count are zero, return -1
-		if (chunk_info == 0)
-			return -1;
-
-		// otherwise, return the offset (first 3 bytes, big endian)
-		uint32_t chunk_sector_offset = __builtin_bswap32(chunk_info) >> 8;
-
-		return chunk_sector_offset * 4096;
-	}
-
-	bool err() {
-		return sz == 0;
 	}
 };
 
 int main() {
 	RegionReader rd("r.0.0.mca");
 
-	printf("Success: %d\n", !rd.err());
+	if (rd.err())
+		return 1;
 
-	for (int z = 0; z < 32; z++) {
-		for (int x = 0; x < 32; x++) {
-			printf("%d/%d -> %zd\n", x, z, rd.chunk_off(x, z));
-		}
-	}
+	SegmentMinifier m(rd, 1, 1);
+	m.minify();
 }
