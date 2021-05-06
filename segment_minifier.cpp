@@ -75,10 +75,6 @@ std::unique_ptr<chunk_data_t> SegmentMinifier::minify() {
 	return ret;
 }
 
-static constexpr int xyz_to_nth(int x, int y, int z) {
-	return x + 128 * (z + 128 * y);
-}
-
 uint16_t SegmentMinifier::get_block(int x, int y, int z) {
 	int chunkx = x / 16;
 	int chunkz = z / 16;
@@ -126,7 +122,7 @@ void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
 		for (int y = 0; y < 256; y++)
 			for (int z = start_z; z < start_z + 16; z++)
 				for (int x = start_x; x < start_x + 16; x++)
-					data[xyz_to_nth(x, y, z)] = global_palette.air;
+					data[seg_xyz_to_index(x, y, z)] = global_palette.air;
 
 		return;
 	}
@@ -137,7 +133,7 @@ void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
 	for (int y = 0; y < 256; y++) {
 		for (int z = start_z; z < start_z + 16; z++) {
 			for (int x = start_x; x < start_x + 16; x++) {
-				int nth = xyz_to_nth(x, y, z);
+				int nth = seg_xyz_to_index(x, y, z);
 				uint16_t block = get_block(x, y, z);
 
 				if (!global_palette.is_solid(block)) {

@@ -8,6 +8,10 @@
 
 using chunk_data_t = std::array<uint16_t, 64 * 256 * 256>;
 
+static constexpr int seg_xyz_to_index(int x, int y, int z) {
+	return x + 128 * (z + 128 * y);
+}
+
 // segment ^= 8x8 chunks
 // segx = chunkx / 8
 struct SegmentMinifier {
