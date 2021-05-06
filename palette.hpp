@@ -2,35 +2,26 @@
 
 #include <cstring>
 
-#include <map>
+#include <unordered_map>
 #include <string>
 
 // NOT!!!!! atomic
 struct BlockIdPalette {
-	std::map<std::string, int> p;
+	std::unordered_map<std::string, int> p;
 	int next = 0;
 
 	int air;
-	int cave_air;
+	int removed;
 
-	static const int nonsolid_border = 104;
+	static const int nonsolid_border = 103;
 
 	BlockIdPalette();
-
-	bool is_air(int id) {
-		return id == air || id == cave_air;
-	}
 
 	bool is_solid(int id) {
 		return id >= nonsolid_border;
 	}
 
 	int get_id(const char* key) {
-		// 0 is the default value for ints, so we must handle air, which maps to 0,
-		// as a special case
-		if (!strcmp(key, "air"))
-			return 0;
-
 		int& id = p[key];
 		if (id == 0)
 			id = next++;

@@ -55,8 +55,8 @@ Chunk::Chunk(const RawChunkView& v) {
 	std::unique_ptr<nbt_tag, std::function<void(nbt_tag*)>> root(_root,
 		[] (nbt_tag* t) { nbt_free_tag(t); });
 
-	// air is 0, so set blocks to air by default
 	blocks.reset(new uint16_t[16 * 16 * 256]());
+	std::fill_n(blocks.get(), 16 * 16 * 256, (uint16_t)global_palette.air);
 
 	// get sections
 	nbt_tag* secs = get_tag(get_tag(root.get(), "Level"), "Sections");
@@ -103,8 +103,9 @@ bool Chunk::err() const {
 
 void Chunk::parse_section(nbt_tag* palette, nbt_tag* blocks, int sector_y) {
 	long long num_palette_entries = palette->tag_list.size;
-	// the '()' at the end initializes to 0
-	std::unique_ptr<uint16_t[]> section_palette(new uint16_t[num_palette_entries]());
+	std::unique_ptr<uint16_t[]> section_palette(new uint16_t[num_palette_entries]);
+	std::fill_n(section_palette.get(), num_palette_entries,
+			(uint16_t)global_palette.air);
 
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define UPPER_LOG2(X) (LOG2(X - 1) + 1)

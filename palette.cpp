@@ -3,7 +3,7 @@
 BlockIdPalette global_palette;
 
 BlockIdPalette::BlockIdPalette() {
-	static std::array<const char*, nonsolid_border> nonsolid_blocks{
+	static constexpr std::array<const char*, nonsolid_border> nonsolid_blocks{
 		"stone_pressure_plate",
 		"oak_pressure_plate",
 		"spruce_pressure_plate",
@@ -83,13 +83,6 @@ BlockIdPalette::BlockIdPalette() {
 		"prismarine_brick_slab",
 		"dark_prismarine_slab",
 
-		"oak_leaves",
-		"spruce_leaves",
-		"birch_leaves",
-		"dark_oak_leaves",
-		"jungle_leaves",
-		"acacia_leaves",
-
 		"soul_torch",
 		"iron_bars",
 		"nether_portal",
@@ -108,22 +101,30 @@ BlockIdPalette::BlockIdPalette() {
 		"ladder",
 		"bed",
 		"chest",
-		"cave_air",
+
+		"spruce_leaves",
+		"acacia_leaves",
+		"dark_oak_leaves",
+		"birch_leaves",
+		"jungle_leaves",
+		"oak_leaves",
+
 		"water",
 		"air"
 	};
 	// let common block ids clump together
 	// (also why nonsolid_blocks has more common stuff last)
-	static std::array<const char*, 12> common_blocks{
+	static constexpr std::array<const char*, 13> common_blocks{
+		"removed", // solid blocks completely surrounded by other solid blocks
 		"stone",
+		"bedrock",
+		"grass_block",
 		"dirt",
 		"sand",
 		"gravel",
 		"diorite",
 		"granite",
 		"andesite",
-		"bedrock",
-		"grass_block",
 		"sandstone",
 		"red_sand",
 		"terracotta"
@@ -136,5 +137,7 @@ BlockIdPalette::BlockIdPalette() {
 	}
 
 	air = p["air"];
-	cave_air = p["cave_air"];
+	p["cave_air"] = air;
+
+	removed = p["removed"];
 }
