@@ -3,10 +3,12 @@
 #include <cstring>
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 
 struct BlockIdPalette {
 	std::unordered_map<std::string, int> p;
+	std::unordered_set<std::string> requested;
 	int next = 0;
 
 	int air;
@@ -25,23 +27,8 @@ struct BlockIdPalette {
 		if (id == 0)
 			id = next++;
 
+		requested.insert(key);
+
 		return id;
-	}
-
-	std::string serialize() {
-		std::string ret("{");
-
-		bool first = true;
-
-		for (auto kv : p) {
-			char next[64];
-			sprintf(next, "%s\n\t\"%s\": %d", first? "" : ",", kv.first.c_str(), kv.second);
-			first = false;
-
-			ret += next;
-		}
-		ret += "\n}";
-
-		return ret;
 	}
 };
