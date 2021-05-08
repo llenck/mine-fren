@@ -17,7 +17,7 @@ SegmentMinifier::SegmentMinifier(const RegionReader& r, int segx, int segz) {
 			int a_z = z % 8;
 
 			Chunk*& cur = chunks[a_x * 8 + a_z];
-			cur = new Chunk(r.get_chunk(x, z));
+			cur = new Chunk(palette, r.get_chunk(x, z));
 
 			if (cur->err()) {
 				delete cur;
@@ -34,19 +34,19 @@ SegmentMinifier::SegmentMinifier(const RegionReader& r, int segx, int segz) {
 
 	if (segx != 0) {
 		for (int z = 0; z < 8; z++)
-			adj_nx[z] = new Chunk(r.get_chunk(start_x - 1, z));
+			adj_nx[z] = new Chunk(palette, r.get_chunk(start_x - 1, z));
 	}
 	if (segx != 3) {
 		for (int z = 0; z < 8; z++)
-			adj_px[z] = new Chunk(r.get_chunk(start_x + 1, z));
+			adj_px[z] = new Chunk(palette, r.get_chunk(start_x + 1, z));
 	}
 	if (segz != 0) {
 		for (int x = 0; x < 8; x++)
-			adj_nz[x] = new Chunk(r.get_chunk(x, start_z - 1));
+			adj_nz[x] = new Chunk(palette, r.get_chunk(x, start_z - 1));
 	}
 	if (segz != 3) {
 		for (int x = 0; x < 8; x++)
-			adj_pz[x] = new Chunk(r.get_chunk(x, start_z + 1));
+			adj_pz[x] = new Chunk(palette, r.get_chunk(x, start_z + 1));
 	}
 }
 
@@ -80,7 +80,7 @@ uint16_t SegmentMinifier::get_block(int x, int y, int z) {
 	int chunkz = z / 16;
 	Chunk* chunk = chunks[chunkx * 8 + chunkz];
 	if (!chunk)
-		return global_palette.air;
+		return palette.air;
 
 	int chunk_local_x = x % 16;
 	int chunk_local_z = z % 16;
@@ -105,12 +105,12 @@ uint16_t SegmentMinifier::get_block_const(int x, int y, int z) {
 
 bool SegmentMinifier::has_nonsolid_neighbours(int x, int y, int z) {
 	return
-		!global_palette.is_solid(get_block_const(x, y - 1, z)) ||
-		!global_palette.is_solid(get_block_const(x, y + 1, z)) ||
-		!global_palette.is_solid(get_block_const(x - 1, y, z)) ||
-		!global_palette.is_solid(get_block_const(x + 1, y, z)) ||
-		!global_palette.is_solid(get_block_const(x, y, z - 1)) ||
-		!global_palette.is_solid(get_block_const(x, y, z + 1));
+		!palette.is_solid(get_block_const(x, y - 1, z)) ||
+		!palette.is_solid(get_block_const(x, y + 1, z)) ||
+		!palette.is_solid(get_block_const(x - 1, y, z)) ||
+		!palette.is_solid(get_block_const(x + 1, y, z)) ||
+		!palette.is_solid(get_block_const(x, y, z - 1)) ||
+		!palette.is_solid(get_block_const(x, y, z + 1));
 }
 
 void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
@@ -122,7 +122,7 @@ void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
 		for (int y = 0; y < 256; y++)
 			for (int z = start_z; z < start_z + 16; z++)
 				for (int x = start_x; x < start_x + 16; x++)
-					data[seg_xyz_to_index(x, y, z)] = global_palette.air;
+					data[seg_xyz_to_index(x, y, z)] = palette.air;
 
 		return;
 	}
@@ -136,7 +136,7 @@ void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
 				int nth = seg_xyz_to_index(x, y, z);
 				uint16_t block = get_block(x, y, z);
 
-				if (!global_palette.is_solid(block)) {
+				if (!palette.is_solid(block)) {
 					data[nth] = block;
 					continue;
 				}
@@ -144,7 +144,7 @@ void SegmentMinifier::minify_chunk(int chunk_x, int chunk_z, uint16_t* data) {
 				if (has_nonsolid_neighbours(x, y, z))
 					data[nth] = block;
 				else
-					data[nth] = global_palette.removed;
+					data[nth] = palette.removed;
 			}
 		}
 	}

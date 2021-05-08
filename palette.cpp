@@ -1,7 +1,5 @@
 #include "palette.hpp"
 
-BlockIdPalette global_palette;
-
 BlockIdPalette::BlockIdPalette() {
 	static constexpr std::array<const char*, nonsolid_border> nonsolid_blocks{
 		"stone_pressure_plate",

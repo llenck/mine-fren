@@ -22,11 +22,14 @@ static void write_varint(int64_t value, uint8_t* target, int* bytes_written) {
 
 // TODO: compression
 struct ZsegWriter {
+	BlockIdPalette& palette;
 	int fd = -1;
 
 	RingBuffer<uint8_t, false> buf{2};
 
-	ZsegWriter(int segx, int segz, int dirfd=AT_FDCWD) {
+	ZsegWriter(BlockIdPalette& _palette, int segx, int segz, int dirfd=AT_FDCWD)
+		: palette(_palette)
+	{
 		if (buf.err())
 			return;
 
@@ -102,16 +105,16 @@ struct ZsegWriter {
 
 	bool put_blocks(std::unique_ptr<chunk_data_t> blocks) {
 		uint16_t dist = 0;
-		uint16_t last_block = global_palette.removed;
+		uint16_t last_block = palette.removed;
 
 		for (uint16_t b : *blocks) {
-			if (b == global_palette.removed || b == global_palette.air) {
+			if (b == palette.removed || b == palette.air) {
 				last_block = b;
 				dist++;
 				continue;
 			}
 
-			if (!put_block(b, dist, last_block == global_palette.air))
+			if (!put_block(b, dist, last_block == palette.air))
 				return false;
 			dist = 0;
 		}
@@ -128,7 +131,6 @@ void output_blocks(std::unique_ptr<chunk_data_t>& blocks) {
 	for (int y = 0; y < 256; y++) {
 		printf("y: %d\n", y);
 		for (int z = 0; z < 128; z++) {
-			printf("z %d ", z);
 			for (int x = 0; x < 128; x++) {
 				long n = seg_xyz_to_index(x, y, z);
 				uint16_t b = (*blocks)[n];
@@ -142,7 +144,7 @@ void output_blocks(std::unique_ptr<chunk_data_t>& blocks) {
 }
 
 int main() {
-	RegionReader rd("r.0.0.mca");
+	RegionReader rd("r.-1.0.mca");
 
 	if (rd.err())
 		return 1;
@@ -152,14 +154,16 @@ int main() {
 //		auto blocks = m.minify();
 //	}
 
-	SegmentMinifier m(rd, 1, 2);
+	SegmentMinifier m(rd, 2, 3);
 	auto blocks = m.minify();
 
-	ZsegWriter wr(1, 2);
+	ZsegWriter wr(m.palette, 1, 2);
 	if (wr.err())
 		return 1;
 
-	//output_blocks(blocks);
+	output_blocks(blocks);
 
 	wr.put_blocks(std::move(blocks));
+	
+	printf("%s\n", m.palette.serialize().c_str());
 }

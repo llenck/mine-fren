@@ -5,13 +5,15 @@
 #include <memory>
 
 #include "region_reader.hpp"
+#include "palette.hpp"
 
 #include "nbt.hpp"
 
 struct Chunk {
 	std::unique_ptr<uint16_t[]> blocks{};
+	BlockIdPalette& shared_palette;
 
-	Chunk(const RawChunkView& _v);
+	Chunk(BlockIdPalette& p, const RawChunkView& _v);
 	Chunk(const Chunk& other) = delete;
 	Chunk(Chunk&& other) = delete; // can be implemented if necessary
 

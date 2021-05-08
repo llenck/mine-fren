@@ -23,6 +23,8 @@ struct SegmentMinifier {
 	Chunk* adj_px[8] = {};
 	Chunk* adj_pz[8] = {};
 
+	BlockIdPalette palette;
+
 	SegmentMinifier(const RegionReader& r, int segx, int segz);
 	SegmentMinifier(const SegmentMinifier& other) = delete;
 	SegmentMinifier(SegmentMinifier&& other) = delete;
@@ -30,10 +32,6 @@ struct SegmentMinifier {
 	~SegmentMinifier();
 
 	std::unique_ptr<chunk_data_t> minify();
-
-//	static constexpr void n_to_xyz(long n, int& x, int& y, int& z) {
-//		x = n % 16;
-//	}
 
 private:
 	// may only be used for blocks within the segment

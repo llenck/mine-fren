@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <string>
 
-// NOT!!!!! atomic
 struct BlockIdPalette {
 	std::unordered_map<std::string, int> p;
 	int next = 0;
@@ -29,7 +28,20 @@ struct BlockIdPalette {
 		return id;
 	}
 
-	// todo: serialize to file
-};
+	std::string serialize() {
+		std::string ret("{");
 
-extern BlockIdPalette global_palette;
+		bool first = true;
+
+		for (auto kv : p) {
+			char next[64];
+			sprintf(next, "%s\n\t\"%s\": %d", first? "" : ",", kv.first.c_str(), kv.second);
+			first = false;
+
+			ret += next;
+		}
+		ret += "\n}";
+
+		return ret;
+	}
+};
