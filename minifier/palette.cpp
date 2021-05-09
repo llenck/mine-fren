@@ -138,4 +138,7 @@ BlockIdPalette::BlockIdPalette() {
 	p["cave_air"] = air;
 
 	removed = p["removed"];
+
+	requested.insert("removed");
+	requested.insert("air");
 }
