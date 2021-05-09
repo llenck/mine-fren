@@ -1,22 +1,8 @@
-#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
-
-#include "view.hpp"
-
-struct Segment {
-	const uint8_t* data;
-	size_t length;
-
-	uint16_t* blocks;
-
-	unsigned palette_length;
-	const char** palette_names;
-	uint16_t* palette_ids;
-};
+#include "zseg-parser.h"
 
 static int parse_palette(struct Segment* s, off_t* off, int* removed_id, int* air_id) {
 	*off = 0;
@@ -111,10 +97,6 @@ static int parse_blocks(struct Segment* s, size_t off, uint16_t removed, uint16_
 
 		off += 2;
 
-		printf("%d -> %d (diff: %dx%d)\n",
-				(int)(block_off + next_dist), (int)next_id, (int)next_dist,
-				diff_is_removed);
-
 		uint16_t filler = diff_is_removed? removed : air;
 		for (int i = 0; i < next_dist; i++) {
 			s->blocks[block_off++] = filler;
@@ -170,26 +152,4 @@ int parse_segment(const uint8_t* data, size_t length, struct Segment* out) {
 	}
 
 	return 0;
-}
-
-int main() {
-	FileView f("seg.1.2.zseg");
-	if (f.err()) {
-		fputs("Error opening segz\n", stderr);
-		return 1;
-	}
-
-	struct Segment s;
-	if (parse_segment(f.map, f.sz, &s) != 0) {
-		fputs("Error parsing segz\n", stderr);
-		return 1;
-	}
-
-	for (unsigned i = 0; i < s.palette_length; i++) {
-		printf("%s -> %d\n", s.palette_names[i], s.palette_ids[i]);
-	}
-
-	free_segment(&s);
-
-	puts("Done :)");
 }

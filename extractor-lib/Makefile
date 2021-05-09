@@ -1,26 +1,22 @@
-CXXFLAGS ?= -Wall -Wextra
-LDFLAGS ?=
-CXX ?= g++
+CFLAGS ?= -Wall -Wextra
 
-OBJECTS := main.o
-HEADERS := view.hpp
-EXECUTABLE := main
-INCLUDES := -I ../common
+SOURCES := parser.c
+OBJECTS := parser.o
+HEADERS := ../include/zseg-parser.h
+INCLUDES := -I ../include/
+NATIVE_LIB := libzseg_i.a
 
-debug : CXXFLAGS += -Og -g
-release : CXXFLAGS += -O3
-debug : LDFLAGS +=
-release : LDFLAGS += -O
+debug : CFLAGS += -Og -g
+release : CFLAGS += -O3
 
-debug: $(EXECUTABLE)
-release: $(EXECUTABLE)
+debug: $(NATIVE_LIB)
+release: $(NATIVE_LIB)
 
-$(EXECUTABLE): $(OBJECTS) $(HEADERS)
-	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
-
-%.o: %.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -c
+$(NATIVE_LIB): $(SOURCES) $(HEADERS)
+	$(CC) -c $(SOURCES) $(INCLUDES) $(LDFLAGS)
+	$(RM) $(NATIVE_LIB)
+	$(AR) -rcs $(NATIVE_LIB) $(OBJECTS)
 
 .PHONY: clean
 clean:
-	$(RM) $(EXECUTABLE) *.o
+	$(RM) $(NATIVE_LIB) *.o
