@@ -73,7 +73,7 @@ struct ZsegWriter {
 			dist = 0;
 		}
 
-		return true;
+		return full_flush();
 	}
 
 private:
