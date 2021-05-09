@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <unistd.h>
+
 #include "view.hpp"
 
 struct Segment {
@@ -16,13 +18,13 @@ struct Segment {
 	uint16_t* palette_ids;
 };
 
-static int parse_palette(struct Segment* s, off_t* off) {
+static int parse_palette(struct Segment* s, off_t* off, int* removed_id, int* air_id) {
 	*off = 0;
 
 	while (1) {
 		const char* next = (const char*)(s->data + *off);
 		if (*next == '\0') {
-			*off += 2; // skip the id
+			*off += 3; // skip the id
 			return 0;
 		}
 
@@ -51,6 +53,11 @@ static int parse_palette(struct Segment* s, off_t* off) {
 		}
 		const uint16_t* next_id = (const uint16_t*)(end + 1);
 
+		if (strcmp(next, "removed") == 0)
+			*removed_id = *next_id;
+		else if (strcmp(next, "air") == 0)
+			*air_id = *next_id;
+
 		s->palette_names[s->palette_length - 1] = next;
 		s->palette_ids[s->palette_length - 1] = *next_id;
 
@@ -59,8 +66,69 @@ static int parse_palette(struct Segment* s, off_t* off) {
 	}
 }
 
-static int parse_blocks(struct Segment* s, off_t off) {
-	ssize_t blocks = 128 * 128 * 256;
+static int read_varint(int64_t* ret, const uint8_t* p, int max_length) {
+	int num_read = 0;
+	*ret = 0;
+	uint8_t read;
+	do {
+		if (num_read >= max_length) return -1;
+		if (num_read >= 10) return -1;
+
+		read = p[num_read];
+		int val = (read & 0x7F);
+		*ret |= (val << (7 * num_read));
+
+		num_read += 1;
+	} while ((read & 0x80) != 0);
+
+	return num_read;
+}
+
+static int parse_blocks(struct Segment* s, size_t off, uint16_t removed, uint16_t air) {
+	const size_t max_blocks = 128 * 128 * 256;
+	size_t block_off = 0;
+
+	int64_t next_dist;
+
+	while (off < s->length) {
+		if (block_off >= max_blocks) {
+			return -1;
+		}
+
+		int varint_length = read_varint(&next_dist, s->data + off, s->length - off - 2);
+		if (varint_length <= 0) {
+			return -2;
+		}
+		else if (block_off + next_dist + 2 >= max_blocks) {
+			return -3;
+		}
+
+		off += varint_length;
+
+		uint16_t* tmp = (uint16_t*)(s->data + off);
+		uint16_t next_id = *tmp & 0x7FFF;
+		int diff_is_removed = *tmp & 0x8000;
+
+		off += 2;
+
+		printf("%d -> %d (diff: %dx%d)\n",
+				(int)(block_off + next_dist), (int)next_id, (int)next_dist,
+				diff_is_removed);
+
+		uint16_t filler = diff_is_removed? removed : air;
+		for (int i = 0; i < next_dist; i++) {
+			s->blocks[block_off++] = filler;
+		}
+
+		s->blocks[block_off++] = next_id;
+	}
+	while (block_off < max_blocks) {
+		// assume air, as it cannot be removed, as then the top of the world would need
+		// to be saved again, with the top level of the segment being adjacent to
+		// empty space
+		s->blocks[block_off++] = air;
+	}
+
 	return 0;
 }
 
@@ -88,13 +156,15 @@ int parse_segment(const uint8_t* data, size_t length, struct Segment* out) {
 	out->palette_names = NULL;
 	out->palette_ids = NULL;
 
+	int removed_id, air_id;
+
 	off_t off;
-	if (parse_palette(out, &off) != 0) {
+	if (parse_palette(out, &off, &removed_id, &air_id) != 0) {
 		free_segment(out);
 		return -2;
 	}
 
-	if (parse_blocks(out, off) != 0) {
+	if (parse_blocks(out, off, removed_id, air_id) != 0) {
 		free_segment(out);
 		return -3;
 	}
