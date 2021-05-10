@@ -6,7 +6,7 @@
 #include "segment_minifier.hpp"
 
 struct ZsegWriter {
-	std::function<ssize_t(const uint8_t*, size_t)> wfn;
+	std::function<ssize_t(const uint8_t*, size_t, bool)> wfn;
 	std::function<bool()> cfn;
 
 	RingBuffer<uint8_t, false> buf{2};
@@ -14,7 +14,7 @@ struct ZsegWriter {
 	bool err = false;
 
 	ZsegWriter(
-		std::function<ssize_t(const uint8_t*, size_t)> writefn,
+		std::function<ssize_t(const uint8_t*, size_t, bool)> writefn,
 		std::function<bool()> closefn
 	);
 	ZsegWriter(const ZsegWriter& other) = delete;

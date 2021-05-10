@@ -1,9 +1,11 @@
 CXXFLAGS ?= -Wall -Wextra
-LDFLAGS ?=
+LDFLAGS ?= -lzstd
 CXX ?= g++
 
-OBJECTS := main.o region_reader.o nbt-impl.o chunk_loader.o palette.o segment_minifier.o zseg-writer.o
-HEADERS := region_reader.hpp nbt.hpp chunk_loader.hpp palette.hpp segment_minifier.hpp ringbuf.hpp zseg-writer.hpp
+OBJECTS := main.o region_reader.o nbt-impl.o chunk_loader.o palette.o \
+	segment_minifier.o zseg-writer.o zstd-writer.o
+HEADERS := ringbuf.hpp region_reader.hpp nbt.hpp chunk_loader.hpp palette.hpp \
+	segment_minifier.hpp zseg-writer.hpp zstd-writer.hpp
 EXECUTABLE := main
 
 debug : CXXFLAGS += -Og -g

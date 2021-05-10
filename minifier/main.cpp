@@ -1,17 +1,17 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "zseg-writer.hpp"
-#include "region_reader.hpp"
-#include "palette.hpp"
-
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-int open_file(int segx, int segz, int dirfd=AT_FDCWD) {
+#include "region_reader.hpp"
+#include "zseg-writer.hpp"
+#include "zstd-writer.hpp"
+
+int open_file(int segx, int segz, bool compressed=false, int dirfd=AT_FDCWD) {
 	char filename[64];
-	sprintf(filename, "seg.%d.%d.zseg", segx, segz);
+	sprintf(filename, "seg.%d.%d.%sseg", segx, segz, compressed? "z": "");
 
 	return openat(dirfd, filename, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644);
 }
@@ -29,14 +29,23 @@ int main() {
 
 	SegmentMinifier m(rd, 2, 3);
 
-	int fd = open_file(1, 2);
-
-	ZsegWriter wr(
+	int fd = open_file(1, 2, true);
+	ZstdWriter zwr(
 		[=](const uint8_t* p, size_t n) {
 			return write(fd, p, n);
 		},
 		[=]() {
 			close(fd);
+			return true;
+		},
+	15);
+
+	ZsegWriter wr(
+		[&] (const uint8_t* p, size_t n, bool end) {
+			return zwr.write(p, n, end);
+		},
+		[&] () {
+			zwr.full_flush();
 			return true;
 		}
 	);

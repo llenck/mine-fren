@@ -1,7 +1,5 @@
 #include "zseg-writer.hpp"
 
-#include <cerrno>
-
 #include "palette.hpp"
 
 static void write_varint(int64_t value, uint8_t* target, int* bytes_written) {
@@ -18,7 +16,7 @@ static void write_varint(int64_t value, uint8_t* target, int* bytes_written) {
 }
 
 ZsegWriter::ZsegWriter(
-		std::function<ssize_t(const uint8_t*, size_t)> writefn,
+		std::function<ssize_t(const uint8_t*, size_t, bool)> writefn,
 		std::function<bool()> closefn)
 	: wfn(std::move(writefn)), cfn(std::move(closefn))
 {
@@ -137,25 +135,23 @@ bool ZsegWriter::put_block(uint16_t block, long int dist, bool diff_is_air) {
 }
 
 bool ZsegWriter::full_flush() {
-	while (buf.read_cap() > 0) {
-		if (!partial_flush()) {
-			err = true;
-			return false;
-		}
-	}
-	return true;
-}
-
-bool ZsegWriter::partial_flush() {
-	errno = 0;
 	const uint8_t* rp = buf.read_ptr();
 	int rcap = buf.read_cap();
 
-	ssize_t n = wfn(rp, rcap);
+	ssize_t n = wfn(rp, rcap, true);
+
+	buf.adv_read_ptr(n);
+
+	return n == rcap;
+}
+
+bool ZsegWriter::partial_flush() {
+	const uint8_t* rp = buf.read_ptr();
+	int rcap = buf.read_cap();
+
+	ssize_t n = wfn(rp, rcap, false);
 	if (n < 0) {
-		bool succ = errno == EAGAIN;
-		errno = 0;
-		return succ;
+		return false;
 	}
 
 	buf.adv_read_ptr(n);
