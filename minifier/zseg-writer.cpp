@@ -17,14 +17,13 @@ static void write_varint(int64_t value, uint8_t* target, int* bytes_written) {
 	} while (value != 0);
 }
 
-ZsegWriter::ZsegWriter(int segx, int segz, int dirfd) {
+ZsegWriter::ZsegWriter(
+		std::function<ssize_t(const uint8_t*, size_t)> writefn,
+		std::function<bool()> closefn)
+	: wfn(std::move(writefn)), cfn(std::move(closefn))
+{
 	if (buf.err())
-		return;
-
-	char filename[64];
-	sprintf(filename, "seg.%d.%d.zseg", segx, segz);
-
-	fd = openat(dirfd, filename, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644);
+		err = true;
 }
 
 bool ZsegWriter::put_minifier(SegmentMinifier& m) {
@@ -63,8 +62,8 @@ bool ZsegWriter::put_palette(uint16_t id, const std::string& name) {
 	int n = name.length() + 1;
 
 	if (wcap < n + 2) {
-		close(fd);
-		fd = -1;
+		cfn();
+		err = true;
 		return false;
 	}
 
@@ -87,8 +86,8 @@ bool ZsegWriter::end_palette() {
 	int wcap = buf.write_cap();
 
 	if (wcap < 3) {
-		close(fd);
-		fd = -1;
+		cfn();
+		err = true;
 		return false;
 	}
 
@@ -106,8 +105,8 @@ bool ZsegWriter::put_block(uint16_t block, long int dist, bool diff_is_air) {
 	int wcap = buf.write_cap();
 
 	if (wcap < 12) {
-		close(fd);
-		fd = -1;
+		cfn();
+		err = true;
 		return false;
 	}
 
@@ -138,23 +137,27 @@ bool ZsegWriter::put_block(uint16_t block, long int dist, bool diff_is_air) {
 }
 
 bool ZsegWriter::full_flush() {
-	errno = 0;
-
-	while (buf.read_cap() > 0 && (errno == 0 || errno == EAGAIN)) {
-		errno = 0;
-		partial_flush();
+	while (buf.read_cap() > 0) {
+		if (!partial_flush()) {
+			err = true;
+			return false;
+		}
 	}
-
-	return errno == 0;
+	return true;
 }
 
-void ZsegWriter::partial_flush() {
+bool ZsegWriter::partial_flush() {
+	errno = 0;
 	const uint8_t* rp = buf.read_ptr();
 	int rcap = buf.read_cap();
 
-	ssize_t n = write(fd, rp, rcap);
-	if (n < 0)
-		return;
+	ssize_t n = wfn(rp, rcap);
+	if (n < 0) {
+		bool succ = errno == EAGAIN;
+		errno = 0;
+		return succ;
+	}
 
 	buf.adv_read_ptr(n);
+	return true;
 }

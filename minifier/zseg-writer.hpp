@@ -1,27 +1,24 @@
 #pragma once
 
+#include <functional>
+
 #include "ringbuf.hpp"
 #include "segment_minifier.hpp"
 
 struct ZsegWriter {
-	int fd = -1;
+	std::function<ssize_t(const uint8_t*, size_t)> wfn;
+	std::function<bool()> cfn;
 
 	RingBuffer<uint8_t, false> buf{2};
 
-	ZsegWriter(int segx, int segz, int dirfd=AT_FDCWD);
+	bool err = false;
+
+	ZsegWriter(
+		std::function<ssize_t(const uint8_t*, size_t)> writefn,
+		std::function<bool()> closefn
+	);
 	ZsegWriter(const ZsegWriter& other) = delete;
 	ZsegWriter(ZsegWriter&& other) = delete;
-
-	~ZsegWriter() {
-		if (fd >= 0) {
-			full_flush();
-			close(fd);
-		}
-	}
-
-	bool err() {
-		return fd < 0;
-	}
 
 	bool put_minifier(SegmentMinifier& m);
 
@@ -32,5 +29,5 @@ private:
 	bool put_block(uint16_t block, long int dist, bool diff_is_air);
 
 	bool full_flush();
-	void partial_flush();
+	bool partial_flush();
 };

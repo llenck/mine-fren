@@ -1,9 +1,20 @@
 #include <cstdio>
-#include <cstdint>
+#include <cstdlib>
 
 #include "zseg-writer.hpp"
 #include "region_reader.hpp"
 #include "palette.hpp"
+
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int open_file(int segx, int segz, int dirfd=AT_FDCWD) {
+	char filename[64];
+	sprintf(filename, "seg.%d.%d.zseg", segx, segz);
+
+	return openat(dirfd, filename, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644);
+}
 
 int main() {
 	RegionReader rd("r.-1.0.mca");
@@ -18,8 +29,19 @@ int main() {
 
 	SegmentMinifier m(rd, 2, 3);
 
-	ZsegWriter wr(1, 2);
-	if (wr.err())
+	int fd = open_file(1, 2);
+
+	ZsegWriter wr(
+		[=](const uint8_t* p, size_t n) {
+			return write(fd, p, n);
+		},
+		[=]() {
+			close(fd);
+			return true;
+		}
+	);
+
+	if (wr.err)
 		return 1;
 
 	wr.put_minifier(m);
