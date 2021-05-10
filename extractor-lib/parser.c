@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "zseg-parser.h"
 
@@ -153,3 +154,14 @@ int parse_segment(const uint8_t* data, size_t length, struct Segment* out) {
 
 	return 0;
 }
+
+#ifdef __EMSCRIPTEN__
+
+uint64_t emalloc(size_t n) {
+	return (uint64_t)malloc(n);
+}
+void efree(uint64_t p) {
+	free((void*)p);
+}
+
+#endif

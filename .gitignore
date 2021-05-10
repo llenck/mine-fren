@@ -2,3 +2,6 @@
 main
 **.mca
 **.zseg
+**.a
+**.wasm
+zseg_i.js
