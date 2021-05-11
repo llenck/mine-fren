@@ -35,12 +35,15 @@ struct RegionMinifier {
 	RegionMinifier(const RegionMinifier& other) = delete;
 	RegionMinifier(RegionMinifier&& other) = delete;
 
-	void minify_segment(int segx, int segy, bool compressed=true, int dirfd=AT_FDCWD) {
-		// TODO fixup segx / segy
+	void minify_segment(int segx, int segz, bool compressed=true, int dirfd=AT_FDCWD) {
+		segx = ((segx % 4) + 4) % 4;
+		segz = ((segz % 4) + 4) % 4;
+		int abs_segx = segx + rd.x * 4;
+		int abs_segz = segz + rd.z * 4;
 
-		int fd = open_file(segx, segy, compressed, dirfd);
+		int fd = open_file(abs_segx, abs_segz, compressed, dirfd);
 
-		SegmentMinifier sm(rd, segx, segy);
+		SegmentMinifier sm(rd, segx, segz);
 
 		if (compressed) {
 			// create a zstd writer...
