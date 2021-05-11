@@ -1,4 +1,4 @@
-#include "zstd-writer.hpp"
+#include "zstd_writer.hpp"
 
 ZstdWriter::ZstdWriter(
 	std::function<ssize_t(const uint8_t*, size_t)> writefn,

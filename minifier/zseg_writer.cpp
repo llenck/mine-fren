@@ -1,4 +1,4 @@
-#include "zseg-writer.hpp"
+#include "zseg_writer.hpp"
 
 #include "palette.hpp"
 
