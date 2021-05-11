@@ -2,10 +2,10 @@
 
 RegionReader::RegionReader(const char* filename) {
 	if (sscanf(filename, "r.%d.%d.mca", &x, &z) != 2)
-		return;
+		throw std::logic_error("Couldn't parse file name");
 
 	if ((fd = open(filename, O_RDONLY | O_CLOEXEC)) < 0)
-		return;
+		throw std::runtime_error("Couldn't open region file");
 
 	struct stat file_info;
 	if (fstat(fd, &file_info) < 0)
@@ -23,6 +23,7 @@ err_clofd:
 	close(fd);
 	map = nullptr;
 	sz = 0;
+	throw std::runtime_error("Couldn't map region file");
 }
 RegionReader::RegionReader(RegionReader&& other) {
 	x = other.x;
@@ -51,7 +52,7 @@ off_t RegionReader::chunk_off(int chunkx, int chunkz) const {
 
 	// if both offset and sector count are zero, return -1
 	if (chunk_info == 0)
-		return -1;
+		throw std::runtime_error("Chunk doesn't exist");
 
 	// otherwise, return the offset (first 3 bytes, big endian)
 	uint32_t chunk_sector_offset = __builtin_bswap32(chunk_info) >> 8;
@@ -62,7 +63,7 @@ off_t RegionReader::chunk_off(int chunkx, int chunkz) const {
 RawChunkView RegionReader::get_chunk(int chunkx, int chunkz) const {
 	off_t off = chunk_off(chunkx, chunkz);
 	if (off < 8192)
-		return {};
+		throw std::runtime_error("Chunk data inside table");
 
 	const uint8_t* chunk = map + off;
 	if (chunk[5] >= 128)
@@ -72,11 +73,7 @@ RawChunkView RegionReader::get_chunk(int chunkx, int chunkz) const {
 	len = __builtin_bswap32(len);
 
 	if (len + (off + 4) > (off_t)sz)
-		return {}; // error if chunk goes beyond eof
+		throw std::runtime_error("Chunk data beyond EOF");
 	else
 		return RawChunkView(chunk + 5, len);
-}
-
-bool RegionReader::err() const {
-	return sz == 0;
 }

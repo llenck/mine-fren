@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include <utility>
+#include <stdexcept>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,14 +17,13 @@ struct RawChunkView {
 	uint32_t sz = 0;
 	int fd = -1;
 
-	RawChunkView() {}
 	RawChunkView(const uint8_t* _data, long unsigned _sz) : data(_data), sz(_sz) {}
 	RawChunkView(int chunkx, int chunkz) {
 		char filename[64];
 		sprintf(filename, "c.%d.%d.mcc", chunkx, chunkz);
 
 		if ((fd = open(filename, O_RDONLY | O_CLOEXEC)) < 0)
-			return;
+			throw std::runtime_error("Couldn't open chunk file");
 
 		struct stat file_info;
 		if (fstat(fd, &file_info) < 0)
@@ -41,6 +41,7 @@ err:
 		fd = -1;
 		data = nullptr;
 		sz = 0;
+		throw std::runtime_error("Couldn't map chunk file");
 	}
 	RawChunkView(const RawChunkView& other) = delete;
 	RawChunkView(RawChunkView&& other) {
@@ -55,10 +56,6 @@ err:
 			sz = 0;
 			close(fd);
 		}
-	}
-
-	bool err() const {
-		return sz == 0;
 	}
 };
 
@@ -80,6 +77,4 @@ struct RegionReader {
 	off_t chunk_off(int chunkx, int chunkz) const;
 
 	RawChunkView get_chunk(int chunkx, int chunkz) const;
-
-	bool err() const;
 };

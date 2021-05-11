@@ -17,7 +17,6 @@ struct Chunk {
 	Chunk(const Chunk& other) = delete;
 	Chunk(Chunk&& other) = delete; // can be implemented if necessary
 
-	bool err() const;
 	static constexpr off_t xyz_to_index(int x, int y, int z) {
 		return x + (z + y * 16) * 16;
 	}

@@ -1,6 +1,17 @@
 #include "segment_minifier.hpp"
 
+#include <stdexcept>
+
 #include "palette.hpp"
+
+static Chunk* new_chunk_or_null(BlockIdPalette& palette, const RawChunkView& v) {
+	try {
+		return new Chunk(palette, v);
+	}
+	catch (std::runtime_error& err) {
+		return nullptr;
+	}
+}
 
 SegmentMinifier::SegmentMinifier(const RegionReader& r, int segx, int segz) {
 	segx %= 4;
@@ -17,14 +28,15 @@ SegmentMinifier::SegmentMinifier(const RegionReader& r, int segx, int segz) {
 			int a_z = z % 8;
 
 			Chunk*& cur = chunks[a_x * 8 + a_z];
-			cur = new Chunk(palette, r.get_chunk(x, z));
 
-			if (cur->err()) {
+			try {
+				cur = new Chunk(palette, r.get_chunk(x, z));
+				any_present = true;
+			}
+			catch (std::runtime_error& err) {
 				delete cur;
 				cur = nullptr;
 			}
-			else
-				any_present = true;
 		}
 	}
 
@@ -34,19 +46,19 @@ SegmentMinifier::SegmentMinifier(const RegionReader& r, int segx, int segz) {
 
 	if (segx != 0) {
 		for (int z = 0; z < 8; z++)
-			adj_nx[z] = new Chunk(palette, r.get_chunk(start_x - 1, z));
+			adj_nx[z] = new_chunk_or_null(palette, r.get_chunk(start_x - 1, z));
 	}
 	if (segx != 3) {
 		for (int z = 0; z < 8; z++)
-			adj_px[z] = new Chunk(palette, r.get_chunk(start_x + 1, z));
+			adj_px[z] = new_chunk_or_null(palette, r.get_chunk(start_x + 1, z));
 	}
 	if (segz != 0) {
 		for (int x = 0; x < 8; x++)
-			adj_nz[x] = new Chunk(palette, r.get_chunk(x, start_z - 1));
+			adj_nz[x] = new_chunk_or_null(palette, r.get_chunk(x, start_z - 1));
 	}
 	if (segz != 3) {
 		for (int x = 0; x < 8; x++)
-			adj_pz[x] = new Chunk(palette, r.get_chunk(x, start_z + 1));
+			adj_pz[x] = new_chunk_or_null(palette, r.get_chunk(x, start_z + 1));
 	}
 }
 

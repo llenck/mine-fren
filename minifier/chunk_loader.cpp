@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <stdexcept>
 
 #include "chunk_loader.hpp"
 #include "palette.hpp"
@@ -32,9 +33,6 @@ static size_t nbt_read_cb(void* userdata, uint8_t* data, size_t size) {
 }
 
 static nbt_tag* parse_nbt(const RawChunkView& v) {
-	if (v.err())
-		return nullptr;
-
 	PointerWithOff state = { v.data, v.sz, 0 };
 	nbt_reader_t reader = { nbt_read_cb, &state };
 	return nbt_parse(reader, NBT_PARSE_FLAG_USE_ZLIB);
@@ -52,7 +50,7 @@ Chunk::Chunk(BlockIdPalette& p, const RawChunkView& v)
 {
 	nbt_tag* _root = parse_nbt(v);
 	if (!_root)
-		return;
+		throw std::runtime_error("Couldn't parse nbt");
 
 	std::unique_ptr<nbt_tag, std::function<void(nbt_tag*)>> root(_root,
 		[] (nbt_tag* t) { nbt_free_tag(t); });
@@ -65,7 +63,7 @@ Chunk::Chunk(BlockIdPalette& p, const RawChunkView& v)
 	if (!secs
 		|| secs->type != NBT_TYPE_LIST
 		|| secs->tag_list.type != NBT_TYPE_COMPOUND)
-		goto err;
+		throw std::runtime_error("Couldn't get nbt tag \"Level/Sections\"");
 
 	// for each section, get the palette and block tags, and pass them to parse_section
 	for (unsigned i = 0; i < secs->tag_list.size; i++) {
@@ -93,14 +91,6 @@ Chunk::Chunk(BlockIdPalette& p, const RawChunkView& v)
 
 		parse_section(palette, blocks, y);
 	}
-
-	return;
-err:
-	blocks.reset(nullptr);
-}
-
-bool Chunk::err() const {
-	return !blocks;
 }
 
 void Chunk::parse_section(nbt_tag* palette, nbt_tag* blocks, int sector_y) {
