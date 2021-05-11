@@ -92,4 +92,10 @@ struct RegionMinifier {
 			wr.put_minifier(sm);
 		}
 	}
+
+	void minify_region(bool compressed=true, int dirfd=AT_FDCWD) {
+		for (int i = 0; i < 16; i++) {
+			minify_segment(i % 4, i / 4, compressed, dirfd);
+		}
+	}
 };
