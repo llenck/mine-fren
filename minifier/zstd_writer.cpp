@@ -8,6 +8,10 @@ ZstdWriter::ZstdWriter(
 {
 	if (buf.err())
 		throw std::runtime_error("Couldn't create ring buffer");
+
+	size_t r = ZSTD_CCtx_reset(ctx, ZSTD_reset_session_only);
+	if (ZSTD_isError(r))
+		throw std::runtime_error(ZSTD_getErrorName(r));
 }
 
 ZstdWriter::~ZstdWriter() {
@@ -20,22 +24,23 @@ ssize_t ZstdWriter::write(const uint8_t* data, size_t n, bool end) {
 	ZSTD_EndDirective mode = end? ZSTD_e_end : ZSTD_e_continue;
 	ZSTD_inBuffer in = { data, n, 0 };
 
-	uint8_t* wr = buf.write_ptr();
-	unsigned wcap = buf.write_cap();
+	size_t r;
 
-	if (wcap < n / 2) {
-		partial_flush();
-		wr = buf.write_ptr(); // should be the same, but idk
-		wcap = buf.write_cap();
-	}
+	do {
+		uint8_t* wr = buf.write_ptr();
+		unsigned wcap = buf.write_cap();
 
-	ZSTD_outBuffer out = { wr, wcap, 0 };
+		ZSTD_outBuffer out = { wr, wcap, 0 };
 
-	size_t r = ZSTD_compressStream2(ctx, &out, &in, mode);
-	if (ZSTD_isError(r))
-		throw std::runtime_error(ZSTD_getErrorName(r));
+		r = ZSTD_compressStream2(ctx, &out, &in, mode);
+		if (ZSTD_isError(r))
+			throw std::runtime_error(ZSTD_getErrorName(r));
 
-	buf.adv_write_ptr(out.pos);
+		buf.adv_write_ptr(out.pos);
+
+		if (r != 0)
+			partial_flush();
+	} while (end && r != 0);
 
 	if (end && in.pos != in.size)
 		throw std::runtime_error("Couldn't finalize zstd stream");
