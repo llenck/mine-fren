@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+// for ZSTD_decompressBound
+#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 #include "zseg-parser.h"
