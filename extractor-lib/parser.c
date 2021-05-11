@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include <zstd.h>
+
 #include "zseg-parser.h"
 
 static int parse_palette(struct Segment* s, off_t* off, int* removed_id, int* air_id) {
@@ -45,7 +47,11 @@ static int parse_palette(struct Segment* s, off_t* off, int* removed_id, int* ai
 		else if (strcmp(next, "air") == 0)
 			*air_id = *next_id;
 
-		s->palette_names[s->palette_length - 1] = next;
+		const char* n = strdup(next);
+		if (n == NULL)
+			return -3;
+
+		s->palette_names[s->palette_length - 1] = n;
 		s->palette_ids[s->palette_length - 1] = *next_id;
 
 		*off += end - next;
@@ -116,6 +122,10 @@ static int parse_blocks(struct Segment* s, size_t off, uint16_t removed, uint16_
 }
 
 void free_segment(struct Segment* s) {
+	for (unsigned i = 0; i < s->palette_length; i++) {
+		free((void*)s->palette_names[i]);
+	}
+
 	free((void*)s->blocks);
 	free((void*)s->palette_names);
 	free((void*)s->palette_ids);
@@ -123,33 +133,80 @@ void free_segment(struct Segment* s) {
 	s->blocks = NULL;
 	s->palette_names = NULL;
 	s->palette_ids = NULL;
+
+	if (s->allocated) {
+		free((void*)s->data);
+		s->allocated = 0;
+		s->data = NULL;
+	}
 }
 
-// data must outlive the Segment struct
+static uint8_t* decompress_zstd(const uint8_t* src, size_t length, size_t* dst_len) {
+	size_t dec_bound = ZSTD_decompressBound(src, length);
+	if (ZSTD_isError(dec_bound)) {
+		return NULL;
+	}
+
+	uint8_t* ret = (uint8_t*)malloc(dec_bound);
+	size_t dec_sz = ZSTD_decompress(ret, dec_bound, src, length);
+
+	if (ZSTD_isError(dec_sz)) {
+		free(ret);
+		return NULL;
+	}
+
+	*dst_len = dec_sz;
+
+	// try to free up some memory since we probably allocated too much
+	uint8_t* reduced = (uint8_t*)realloc(ret, dec_sz);
+	if (reduced == NULL) {
+		return ret;
+	}
+	else {
+		return reduced;
+	}
+}
+
 int parse_segment(const uint8_t* data, size_t length, struct Segment* out) {
-	out->data = data;
-	out->length = length;
+	const char _magic[] = { 0x28, 0xb5, 0x2f, 0xfd };
+	const uint32_t magic = *(uint32_t*)_magic;
+
+	if (length < 5)
+		return -1;
+
+	if (*(uint32_t*)data == magic) {
+		out->allocated = 1;
+		out->data = decompress_zstd(data, length, &out->length);
+		if (out->data == NULL) {
+			return -2;
+		}
+	}
+	else {
+		out->allocated = 0;
+		out->data = data;
+		out->length = length;
+	}
 
 	out->blocks = (uint16_t*)malloc(128 * 128 * 256 * sizeof(uint16_t));
 	if (out->blocks == NULL) {
-		return -1;
+		return -3;
 	}
 
 	out->palette_length = 0;
 	out->palette_names = NULL;
 	out->palette_ids = NULL;
 
-	int removed_id, air_id;
+	int removed_id = 0, air_id = 0;
 
 	off_t off;
 	if (parse_palette(out, &off, &removed_id, &air_id) != 0) {
 		free_segment(out);
-		return -2;
+		return -4;
 	}
 
 	if (parse_blocks(out, off, removed_id, air_id) != 0) {
 		free_segment(out);
-		return -3;
+		return -5;
 	}
 
 	return 0;

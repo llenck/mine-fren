@@ -1,5 +1,5 @@
 CXXFLAGS ?= -Wall -Wextra -Og -g
-LDFLAGS ?= ../extractor-lib/libzseg_i.a
+LDFLAGS ?= ../extractor-lib/libzseg_i.a -lzstd
 CXX ?= g++
 
 OBJECTS := main.o

@@ -11,8 +11,8 @@ WASM_LIB := libzseg_i.wasm.a
 debug : CFLAGS += -Og -g
 release : CFLAGS += -O3
 
-debug: $(NATIVE_LIB) $(WASM_LIB)
-release: $(NATIVE_LIB) $(WASM_LIB)
+debug: $(NATIVE_LIB) #$(WASM_LIB)
+release: $(NATIVE_LIB) #$(WASM_LIB)
 
 $(NATIVE_LIB): $(SOURCES) $(HEADERS)
 	$(CC) -c $(SOURCES) $(INCLUDES) $(CFLAGS)

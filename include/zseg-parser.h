@@ -8,14 +8,16 @@ extern "C" {
 #include <stdlib.h>
 
 struct Segment {
-	const uint8_t* data;
-	size_t length;
-
 	uint16_t* blocks;
 
-	unsigned palette_length;
 	const char** palette_names;
 	uint16_t* palette_ids;
+	unsigned palette_length;
+
+	// private
+	char allocated;
+	const uint8_t* data;
+	size_t length;
 };
 
 int parse_segment(const uint8_t* data, size_t length, struct Segment* out);
