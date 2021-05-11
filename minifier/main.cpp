@@ -38,7 +38,7 @@ int main() {
 			close(fd);
 			return true;
 		},
-	15);
+	ZstdContext(15));
 
 	ZsegWriter wr(
 		[&] (const uint8_t* p, size_t n, bool end) {

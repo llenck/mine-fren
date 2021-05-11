@@ -3,26 +3,11 @@
 ZstdWriter::ZstdWriter(
 	std::function<ssize_t(const uint8_t*, size_t)> writefn,
 	std::function<bool()> closefn,
-	int comp_level
-) : wfn(writefn), cfn(closefn)
+	ZstdContext zctx
+) : wfn(writefn), cfn(closefn), ctx(zctx)
 {
 	if (buf.err())
 		throw std::runtime_error("Couldn't create ring buffer");
-
-	ctx.reset(ZSTD_createCCtx());
-	if (!ctx)
-		throw std::runtime_error("Couldn't create ZSTD context");
-
-	size_t r = ZSTD_CCtx_setParameter(ctx.get(),
-			ZSTD_c_compressionLevel, comp_level);
-	if (ZSTD_isError(r))
-		throw std::runtime_error(ZSTD_getErrorName(r));
-
-	r = ZSTD_CCtx_setParameter(ctx.get(), ZSTD_c_checksumFlag, 1);
-	if (ZSTD_isError(r))
-		throw std::runtime_error(ZSTD_getErrorName(r));
-
-	ZSTD_CCtx_setParameter(ctx.get(), ZSTD_c_nbWorkers, 4);
 }
 
 ZstdWriter::~ZstdWriter() {
@@ -46,7 +31,7 @@ ssize_t ZstdWriter::write(const uint8_t* data, size_t n, bool end) {
 
 	ZSTD_outBuffer out = { wr, wcap, 0 };
 
-	size_t r = ZSTD_compressStream2(ctx.get(), &out, &in, mode);
+	size_t r = ZSTD_compressStream2(ctx, &out, &in, mode);
 	if (ZSTD_isError(r))
 		throw std::runtime_error(ZSTD_getErrorName(r));
 
