@@ -1,7 +1,7 @@
 #pragma once
 
 extern "C" {
-#	include "libnbt/nbt.h"
+#	include "../../deps/libnbt/nbt.h"
 }
 
 typedef nbt_tag_t nbt_tag;

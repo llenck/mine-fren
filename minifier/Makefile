@@ -4,9 +4,9 @@ CXX ?= g++
 
 OBJECTS := main.o region_reader.o nbt_impl.o chunk_loader.o palette.o \
 	segment_minifier.o zseg_writer.o zstd_writer.o
-HEADERS := ringbuf.hpp region_reader.hpp nbt.hpp chunk_loader.hpp palette.hpp \
-	segment_minifier.hpp zseg_writer.hpp zstd_writer.hpp region_minifier.hpp
+HEADERS := $(wildcard ../include/minifier/*)
 EXECUTABLE := main
+INCLUDES := -I ../include/minifier
 
 debug : CXXFLAGS += -Og -g
 release : CXXFLAGS += -O3
@@ -22,7 +22,7 @@ $(EXECUTABLE): $(OBJECTS) $(HEADERS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
 %.o: %.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) $< -c
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -c
 
 nbt_impl.o: nbt_impl.c
 	$(CC) $(CFLAGS) $< -c
