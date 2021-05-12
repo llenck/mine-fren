@@ -40,7 +40,7 @@ bool ZsegWriter::put_minifier(SegmentMinifier& m) {
 	uint16_t dist = 0;
 	uint16_t last_block = p.removed;
 	for (uint16_t b : *blocks) {
-		if (b == p.removed || b == p.air) {
+		if (b == p.air || b == p.removed) {
 			last_block = b;
 			dist++;
 			continue;
