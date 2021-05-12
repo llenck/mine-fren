@@ -19,10 +19,7 @@ ZsegWriter::ZsegWriter(
 		std::function<ssize_t(const uint8_t*, size_t, bool)> writefn,
 		std::function<bool()> closefn)
 	: wfn(std::move(writefn)), cfn(std::move(closefn))
-{
-	if (buf.err())
-		err = true;
-}
+{}
 
 bool ZsegWriter::put_minifier(SegmentMinifier& m) {
 	std::unique_ptr<chunk_data_t> blocks = m.minify();
@@ -51,7 +48,9 @@ bool ZsegWriter::put_minifier(SegmentMinifier& m) {
 		dist = 0;
 	}
 
-	return full_flush();
+	bool succ = full_flush();
+	cfn();
+	return succ;
 }
 
 bool ZsegWriter::put_palette(uint16_t id, const std::string& name) {

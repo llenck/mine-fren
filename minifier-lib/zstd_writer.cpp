@@ -6,9 +6,6 @@ ZstdWriter::ZstdWriter(
 	ZstdContext zctx
 ) : wfn(writefn), cfn(closefn), ctx(zctx)
 {
-	if (buf.err())
-		throw std::runtime_error("Couldn't create ring buffer");
-
 	size_t r = ZSTD_CCtx_reset(ctx, ZSTD_reset_session_only);
 	if (ZSTD_isError(r))
 		throw std::runtime_error(ZSTD_getErrorName(r));
@@ -18,6 +15,7 @@ ZstdWriter::~ZstdWriter() {
 	if (!flushed) {
 		full_flush();
 	}
+	cfn();
 }
 
 ssize_t ZstdWriter::write(const uint8_t* data, size_t n, bool end) {

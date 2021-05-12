@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <cstdint>
+#include <stdexcept>
 
 template <typename T, bool atomic>
 struct RingBuffer {
@@ -31,7 +32,7 @@ struct RingBuffer {
 		if (4096 / elem_sz * elem_sz != 4096)
 			goto err_unmap;
 
-		fd = memfd_create("libpeervoice ring buffer", MFD_CLOEXEC);
+		fd = memfd_create("mine-fren i/o ring buffer", MFD_CLOEXEC);
 		if (fd < 0)
 			goto err_unmap;
 
@@ -54,6 +55,8 @@ err_close:
 err_unmap:
 		munmap(base, sz * 2);
 		base = nullptr;
+
+		throw std::runtime_error("Failed to create ring buffer");
 	}
 
 	RingBuffer(const RingBuffer& other) = delete;
@@ -65,10 +68,6 @@ err_unmap:
 
 		if (base != nullptr)
 			munmap(base, sz * 2);
-	}
-
-	bool err() {
-		return !base;
 	}
 
 #define ATOMIC_LOAD(x) (atomic? __atomic_load_n(&x, __ATOMIC_SEQ_CST) : x)
