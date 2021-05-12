@@ -5,3 +5,4 @@ main
 **.a
 **.wasm
 zseg_i.js
+mc-minify
