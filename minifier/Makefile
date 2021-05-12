@@ -1,5 +1,5 @@
 CXXFLAGS ?= -Wall -Wextra
-LDFLAGS ?= -lzstd
+LIBS ?= -lzstd
 CXX ?= g++
 
 SOURCES := main.cpp
@@ -20,7 +20,7 @@ debug: $(EXECUTABLE)
 release: $(EXECUTABLE)
 
 install : BUILD_TYPE := release
-install : INSTALL_PATH := /usr/bin/$(EXECUTABLE)
+install : INSTALL_PATH ?= /usr/bin/$(EXECUTABLE)
 install: $(EXECUTABLE)
 	install $(EXECUTABLE) $(INSTALL_PATH) -m755
 
@@ -28,7 +28,7 @@ uninstall:
 	rm $(INSTALL_PATH)
 
 $(EXECUTABLE): $(OBJECTS) $(HEADERS) $(MINIFY_LIB)
-	$(CXX) $(OBJECTS) $(LDFLAGS) $(MINIFY_LIB) -o $@
+	$(CXX) $(OBJECTS) $(LDFLAGS) $(LIBS) $(MINIFY_LIB) -o $@
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -c
