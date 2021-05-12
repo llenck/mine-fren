@@ -1,7 +1,15 @@
 #include "region_reader.hpp"
 
+#include <cstring>
+
 RegionReader::RegionReader(const char* filename) {
-	if (sscanf(filename, "r.%d.%d.mca", &x, &z) != 2)
+	const char* basename = strrchr(filename, '/');
+	if (basename)
+		basename += 1;
+	else
+		basename = filename;
+
+	if (sscanf(basename, "r.%d.%d.mca", &x, &z) != 2)
 		throw std::logic_error("Couldn't parse file name");
 
 	if ((fd = open(filename, O_RDONLY | O_CLOEXEC)) < 0)
