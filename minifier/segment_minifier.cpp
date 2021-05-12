@@ -105,14 +105,53 @@ uint16_t SegmentMinifier::get_block(int x, int y, int z) {
 uint16_t SegmentMinifier::get_block_const(int x, int y, int z) {
 	static const uint16_t something_nonsolid = 0;
 
-	// if out of bounds, assume air
-	if (x < 0 || x >= 128
-	 || y < 0 || y >= 256
-	 || z < 0 || z >= 128)
+	int chunk_x = x / 16;
+	int chunk_z = x / 16;
+	// this assumes two's complement
+	int chunk_local_x = x & 0xf;
+	int chunk_local_z = x & 0xf;
+	off_t n = Chunk::xyz_to_index(chunk_local_x, y, chunk_local_z);
+
+	// do a bunch of OOB checks
+	if (y < 0 || y >= 256)
 		return something_nonsolid;
 
-	// otherwise, do the usual dance
-	return get_block(x, y, z);
+	bool x_oob = x < 0 || x >= 128;
+	bool z_oob = z < 0 || z >= 128;
+
+	Chunk* c = nullptr;
+
+	// if both are not oob, get them from this->chunks
+	if (!x_oob && !z_oob) {
+		c = chunks[chunk_x * 8 + chunk_z];
+		goto try_ret;
+	}
+
+	// if x and z are OOB, we don't have them (shouldn't happen in practice. could be
+	// turned in to an assert)
+	if (x_oob && z_oob) {
+		throw std::logic_error("Both x and z OOB in SegmentMinifier::get_block_const!");
+	}
+
+	// from now on, we can assume y is in 0..256 and at least x or z is in range
+
+	if (x_oob) {
+		Chunk** cs[] = { adj_nx, adj_px };
+		c = cs[x == 128][chunk_z];
+		goto try_ret;
+	}
+	else {
+		// z_oob
+		Chunk** cs[] = { adj_nz, adj_pz };
+		c = cs[z == 128][chunk_x];
+		goto try_ret;
+	}
+
+try_ret:
+	if (!c)
+		return something_nonsolid;
+	else
+		return c->blocks[n];
 }
 
 bool SegmentMinifier::has_nonsolid_neighbours(int x, int y, int z) {
