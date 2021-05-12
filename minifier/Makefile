@@ -6,7 +6,7 @@ SOURCES := main.cpp
 OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))
 HEADERS :=
 EXECUTABLE := main
-INCLUDES := -I ../include/minifier/
+INCLUDES := -I ../include
 MINIFY_LIB := ../minifier-lib/libminify.a
 
 debug : CXXFLAGS += -Og -g
