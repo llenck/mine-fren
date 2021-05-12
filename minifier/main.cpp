@@ -19,17 +19,20 @@ static struct option opts[] = {
 
 static void print_help(const char* command) {
 	fprintf(stderr, 
-	"%s: convert minecraft region files into .seg or .zseg files, precompressing them"
+	"%s: convert minecraft region files into .seg or .zseg files, precompressing them\n"
 	" for other forms of rendering.\n"
 	"\n"
 	"Usage: %s [options] <file or directory> ...\n"
 	"Where options include:\n"
 	"\t-h, --help                   Show this help\n"
-	"\t-o, --output-dir             ouput directory for seg/zseg files (default: ./)\n"
+	"\t-o, --output-dir <dir>       ouput directory for seg/zseg files (default: ./)\n"
 	"\t-c, --compress <true|false>  enable/disable compression (default: true)\n"
 	"\n"
+	"Any additional arguments are interpreted as more files / directories to convert.\n"
+	"\n"
 	"This program is developed at https://github.com/llenck/mcpre-rend (name to"
-	" change). If you have any issues, or want to contribute, please go there.\n"
+	" change)\n"
+	"If you have any issues, or want to contribute, please go there.\n"
 	, command, command);
 	exit(0);
 }

@@ -5,7 +5,7 @@ CXX ?= g++
 SOURCES := main.cpp
 OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))
 HEADERS :=
-EXECUTABLE := main
+EXECUTABLE := mc-minify
 INCLUDES := -I ../include
 MINIFY_LIB := ../minifier-lib/libminify.a
 
@@ -18,6 +18,14 @@ release : BUILD_TYPE := release
 
 debug: $(EXECUTABLE)
 release: $(EXECUTABLE)
+
+install : BUILD_TYPE := release
+install : INSTALL_PATH := /usr/bin/$(EXECUTABLE)
+install: $(EXECUTABLE)
+	install $(EXECUTABLE) $(INSTALL_PATH) -m755
+
+uninstall:
+	rm $(INSTALL_PATH)
 
 $(EXECUTABLE): $(OBJECTS) $(HEADERS) $(MINIFY_LIB)
 	$(CXX) $(OBJECTS) $(LDFLAGS) $(MINIFY_LIB) -o $@
