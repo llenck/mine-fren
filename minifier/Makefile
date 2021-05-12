@@ -9,6 +9,8 @@ EXECUTABLE := mc-minify
 INCLUDES := -I ../include
 MINIFY_LIB := ../minifier-lib/libminify.a
 
+INSTALL_PATH ?= /usr/bin/$(EXECUTABLE)
+
 debug : CXXFLAGS += -Og -g
 release : CXXFLAGS += -O3
 debug : LDFLAGS +=
@@ -20,7 +22,6 @@ debug: $(EXECUTABLE)
 release: $(EXECUTABLE)
 
 install : BUILD_TYPE := release
-install : INSTALL_PATH ?= /usr/bin/$(EXECUTABLE)
 install: $(EXECUTABLE)
 	install $(EXECUTABLE) $(INSTALL_PATH) -m755
 
