@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-RegionReader::RegionReader(const char* filename) {
+RegionReader::RegionReader(const char* filename, int rdirfd) {
 	const char* basename = strrchr(filename, '/');
 	if (basename)
 		basename += 1;
@@ -12,7 +12,7 @@ RegionReader::RegionReader(const char* filename) {
 	if (sscanf(basename, "r.%d.%d.mca", &x, &z) != 2)
 		throw std::logic_error("Couldn't parse file name");
 
-	if ((fd = open(filename, O_RDONLY | O_CLOEXEC)) < 0)
+	if ((fd = openat(rdirfd, filename, O_RDONLY | O_CLOEXEC)) < 0)
 		throw std::runtime_error("Couldn't open region file");
 
 	struct stat file_info;

@@ -67,7 +67,7 @@ struct RegionReader {
 	const uint8_t* map;
 	size_t sz = 0;
 
-	RegionReader(const char* filename);
+	RegionReader(const char* filename, int rdirfd=AT_FDCWD);
 	// mapping/fd -> "global-ish" state, destructors would interfere with copies
 	RegionReader(const RegionReader& other) = delete;
 	RegionReader(RegionReader&& other);

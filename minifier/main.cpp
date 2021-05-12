@@ -49,22 +49,29 @@ static mode_t path_type(const char* path) {
 	}
 }
 
-static void treat_file(const char* p, int dirfd, ZstdContext& ctx, bool comp) {
-	RegionMinifier rm(p, ctx);
+static void treat_file(int rdirfd, const char* p, int dirfd, ZstdContext& ctx,
+		bool comp)
+{
+	RegionMinifier rm(p, ctx, rdirfd);
 	rm.minify_region(comp, dirfd);
 }
 
 static void treat_dir(const char* p, int dirfd, ZstdContext& ctx, bool comp) {
-	DIR* d = opendir(p);
+	int rdirfd = open(p, O_RDONLY | O_CLOEXEC | O_DIRECTORY);
+	if (rdirfd < 0) {
+		throw std::runtime_error("Couldn't open() input directory");
+	}
+
+	DIR* d = fdopendir(rdirfd);
 	if (!d) {
-		throw std::runtime_error("Couldn't open directory");
+		throw std::runtime_error("Couldn't opendir(3) directory");
 	}
 
 	struct dirent* de;
 	while ((de = readdir(d))) {
 		if (de->d_type == DT_REG) {
 			try {
-				treat_file(de->d_name, dirfd, ctx, comp);
+				treat_file(rdirfd, de->d_name, dirfd, ctx, comp);
 			}
 			catch (std::logic_error& err) {
 				fprintf(stderr, "warning: ignoring logic error on %s\n", de->d_name);
@@ -140,7 +147,7 @@ int main(int argc, char** argv) {
 		// we don't need to worry about symlinks; stat(2) dereferences them.
 		try {
 			if (S_ISREG(type)) {
-				treat_file(p, dirfd, ctx, should_compress);
+				treat_file(AT_FDCWD, p, dirfd, ctx, should_compress);
 			}
 			else if (S_ISDIR(type)) {
 				treat_dir(p, dirfd, ctx, should_compress);

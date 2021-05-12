@@ -32,6 +32,8 @@ struct RegionMinifier {
 
 	RegionMinifier(const char* filename, ZstdContext zctx)
 		: rd(filename), ctx(zctx) {}
+	RegionMinifier(const char* filename, ZstdContext zctx, int rdirfd)
+		: rd(filename, rdirfd), ctx(zctx) {}
 	RegionMinifier(const RegionMinifier& other) = delete;
 	RegionMinifier(RegionMinifier&& other) = delete;
 
