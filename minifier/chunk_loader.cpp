@@ -156,11 +156,6 @@ void Chunk::parse_section(nbt_tag* palette, nbt_tag* blocks, int sector_y) {
 
 			int glob_id = section_palette[local_id];
 
-//			int x = nth_block % 16;
-//			int z = (nth_block / 16) % 16;
-//			int y = (nth_block / (16 * 16)) % 16 + sector_y * 16;
-//			printf("%d / %d / %d -> %d\n", x, y, z, glob_id);
-
 			off_t idx = nth_to_index(nth_block, sector_y);
 			this->blocks[idx] = glob_id;
 		}
