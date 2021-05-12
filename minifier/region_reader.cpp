@@ -45,7 +45,7 @@ off_t RegionReader::chunk_off(int chunkx, int chunkz) const {
 	chunkx %= 32;
 	chunkz %= 32;
 
-	int chunk_info_off = chunkx + chunkz * 16;
+	int chunk_info_off = chunkx + chunkz * 32;
 
 	uint32_t* chunk_infos = (uint32_t*)map;
 	uint32_t chunk_info = chunk_infos[chunk_info_off];
