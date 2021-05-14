@@ -64,24 +64,32 @@ static void treat_dir(const char* p, int dirfd, ZstdContext& ctx, bool comp) {
 
 	DIR* d = fdopendir(rdirfd);
 	if (!d) {
+		close(rdirfd);
 		throw std::runtime_error("Couldn't opendir(3) directory");
 	}
 
-	struct dirent* de;
-	while ((de = readdir(d))) {
-		if (de->d_type == DT_REG) {
-			try {
-				treat_file(rdirfd, de->d_name, dirfd, ctx, comp);
-			}
-			catch (std::logic_error& err) {
-				fprintf(stderr, "warning: ignoring logic error on %s\n", de->d_name);
+	try {
+		struct dirent* de;
+		while ((de = readdir(d))) {
+			if (de->d_type == DT_REG) {
+				try {
+					treat_file(rdirfd, de->d_name, dirfd, ctx, comp);
+				}
+				catch (std::logic_error& err) {
+					fprintf(stderr, "warning: ignoring logic error on %s\n", de->d_name);
+				}
 			}
 		}
-	}
 
-	// possible memory leak: closedir(d) not called if trea_file throws something
-	// that is not an std::logic_error
-	closedir(d);
+		closedir(d);
+		close(rdirfd);
+	}
+	catch (std::exception& e) {
+		closedir(d);
+		close(rdirfd);
+
+		throw e;
+	}
 }
 
 int main(int argc, char** argv) {
