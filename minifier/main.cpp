@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <stdexcept>
+#include <vector>
 
 #include <dirent.h>
 #include <errno.h>
@@ -52,47 +53,30 @@ static mode_t path_type(const char* path) {
 	}
 }
 
-static void treat_file(int rdirfd, const char* p, int dirfd, ZstdContext& ctx,
+static void treat_file(const char* p, int dirfd, ZstdContext& ctx,
 		bool comp)
 {
-	RegionMinifier rm(p, ctx, rdirfd);
+	RegionMinifier rm(p, ctx);
 	rm.minify_region(comp, dirfd);
 }
 
-static void treat_dir(const char* p, int dirfd, ZstdContext& ctx, bool comp) {
-	int rdirfd = open(p, O_RDONLY | O_CLOEXEC | O_DIRECTORY);
-	if (rdirfd < 0) {
-		throw std::runtime_error("Couldn't open() input directory");
-	}
-
-	DIR* d = fdopendir(rdirfd);
+static void collect_files(std::vector<std::string>& files, const char* p) {
+	DIR* d = opendir(p);
 	if (!d) {
-		close(rdirfd);
 		throw std::runtime_error("Couldn't opendir(3) directory");
 	}
 
-	try {
-		struct dirent* de;
-		while ((de = readdir(d))) {
-			if (de->d_type == DT_REG) {
-				try {
-					treat_file(rdirfd, de->d_name, dirfd, ctx, comp);
-				}
-				catch (std::logic_error& err) {
-					fprintf(stderr, "warning: ignoring logic error on %s\n", de->d_name);
-				}
-			}
+	struct dirent* de;
+	while ((de = readdir(d))) {
+		if (de->d_type == DT_REG) {
+			std::string full_path(p);
+			full_path += "/";
+			full_path += de->d_name;
+			files.push_back(std::move(full_path));
 		}
-
-		closedir(d);
-		close(rdirfd);
 	}
-	catch (std::exception& e) {
-		closedir(d);
-		close(rdirfd);
 
-		throw e;
-	}
+	closedir(d);
 }
 
 int main(int argc, char** argv) {
@@ -158,6 +142,8 @@ int main(int argc, char** argv) {
 
 	ZstdContext ctx(comp_level);
 
+	std::vector<std::string> files;
+
 	for (int i = optind; i < argc; i++) {
 		const char* p = argv[i];
 		mode_t type = path_type(p);
@@ -165,10 +151,10 @@ int main(int argc, char** argv) {
 		// we don't need to worry about symlinks; stat(2) dereferences them.
 		try {
 			if (S_ISREG(type)) {
-				treat_file(AT_FDCWD, p, dirfd, ctx, should_compress);
+				files.emplace_back(p);
 			}
 			else if (S_ISDIR(type)) {
-				treat_dir(p, dirfd, ctx, should_compress);
+				collect_files(files, p);
 			}
 			else {
 				fprintf(stderr, "Can't handle file with mode: %zx\n", (size_t)type);
@@ -179,4 +165,22 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "Error treating %s: %s\n", p, err.what());
 		}
 	}
+
+	int n = files.size();
+	for (int i = 0; i < n; i++) {
+		fprintf(stderr, "\rfiles done: %d/%d (%.1f%%)", i, n, i * 100 / (double)n);
+
+		std::string& f = files[i];
+		try {
+			treat_file(f.c_str(), dirfd, ctx, should_compress);
+		}
+		catch (std::runtime_error& err) {
+			fprintf(stderr, "[WARN] treating %s: %s\n", f.c_str(), err.what());
+		}
+		catch (std::logic_error& err) {
+			fprintf(stderr, "[WARN] ignoring logic error on %s: %s\n",
+					f.c_str(), err.what());
+		}
+	}
+	fprintf(stderr, "\rfiles done: %d/%d (100.0%%)\n", n, n);
 }
