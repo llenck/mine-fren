@@ -175,10 +175,10 @@ int main(int argc, char** argv) {
 			treat_file(f.c_str(), dirfd, ctx, should_compress);
 		}
 		catch (std::runtime_error& err) {
-			fprintf(stderr, "[WARN] treating %s: %s\n", f.c_str(), err.what());
+			fprintf(stderr, "\n[WARN] treating %s: %s\n", f.c_str(), err.what());
 		}
 		catch (std::logic_error& err) {
-			fprintf(stderr, "[WARN] ignoring logic error on %s: %s\n",
+			fprintf(stderr, "\n[WARN] ignoring logic error on %s: %s\n",
 					f.c_str(), err.what());
 		}
 	}
