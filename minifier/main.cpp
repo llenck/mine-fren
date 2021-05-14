@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <stdexcept>
 
@@ -14,10 +15,11 @@ static struct option opts[] = {
 	{"help", no_argument, 0, 'h'},
 	{"output-dir", required_argument, 0, 'o'},
 	{"compress", required_argument, 0, 'c'},
+	{"compression-level", required_argument, 0, 'l'},
 	{NULL, 0, 0, 0}
 };
 
-static void print_help(const char* command) {
+static __attribute__((noreturn)) void print_help(const char* command) {
 	fprintf(stderr, 
 	"%s: convert minecraft region files into .seg or .zseg files, precompressing them\n"
 	" for other forms of rendering.\n"
@@ -27,6 +29,7 @@ static void print_help(const char* command) {
 	"\t-h, --help                   Show this help\n"
 	"\t-o, --output-dir <dir>       ouput directory for seg/zseg files (default: ./)\n"
 	"\t-c, --compress <true|false>  enable/disable compression (default: true)\n"
+	"\t-l, --compression-level <N>  set ZSTD compression level (1-19, default: 12)\n"
 	"\n"
 	"Any additional arguments are interpreted as more files / directories to convert.\n"
 	"\n"
@@ -98,7 +101,7 @@ int main(int argc, char** argv) {
 	int comp_level = 12;
 
 	while (1) {
-		int opt = getopt_long(argc, argv, "ho:c:", opts, NULL);
+		int opt = getopt_long(argc, argv, "ho:c:l:", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -128,6 +131,13 @@ int main(int argc, char** argv) {
 					print_help(argv[0]);
 				}
 			}
+
+			case 'l':
+				comp_level = atoi(optarg);
+				if (comp_level <= 0 || comp_level > 19)
+					print_help(argv[0]);
+
+				break;
 		}
 	}
 
